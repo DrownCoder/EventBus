@@ -34,6 +34,7 @@ final class Subscription {
     public boolean equals(Object other) {
         if (other instanceof Subscription) {
             Subscription otherSubscription = (Subscription) other;
+            //订阅者类相同
             return subscriber == otherSubscription.subscriber
                     && subscriberMethod.equals(otherSubscription.subscriberMethod);
         } else {

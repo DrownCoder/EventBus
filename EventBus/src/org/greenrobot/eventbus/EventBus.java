@@ -78,6 +78,7 @@ public class EventBus {
 
     /** Convenience singleton for apps using a process-wide EventBus instance. */
     public static EventBus getDefault() {
+        //常规的双重锁单例模式
         EventBus instance = defaultInstance;
         if (instance == null) {
             synchronized (EventBus.class) {
@@ -90,6 +91,7 @@ public class EventBus {
         return instance;
     }
 
+    //可以通过构造者构建，不同的EventBus之间不相互干扰
     public static EventBusBuilder builder() {
         return new EventBusBuilder();
     }
@@ -138,6 +140,7 @@ public class EventBus {
      * ThreadMode} and priority.
      */
     public void register(Object subscriber) {
+        //获得订阅者对应的Class,MainActivity.class
         Class<?> subscriberClass = subscriber.getClass();
         List<SubscriberMethod> subscriberMethods = subscriberMethodFinder.findSubscriberMethods(subscriberClass);
         synchronized (this) {
@@ -150,12 +153,16 @@ public class EventBus {
     // Must be called in synchronized block
     private void subscribe(Object subscriber, SubscriberMethod subscriberMethod) {
         Class<?> eventType = subscriberMethod.eventType;
+        //new了一个Subscription对象
         Subscription newSubscription = new Subscription(subscriber, subscriberMethod);
+        //判断是否有以Event.class为key
         CopyOnWriteArrayList<Subscription> subscriptions = subscriptionsByEventType.get(eventType);
         if (subscriptions == null) {
+            //new 一个
             subscriptions = new CopyOnWriteArrayList<>();
             subscriptionsByEventType.put(eventType, subscriptions);
         } else {
+            //注册过，就不要重复注册
             if (subscriptions.contains(newSubscription)) {
                 throw new EventBusException("Subscriber " + subscriber.getClass() + " already registered to event "
                         + eventType);
@@ -165,6 +172,7 @@ public class EventBus {
         int size = subscriptions.size();
         for (int i = 0; i <= size; i++) {
             if (i == size || subscriberMethod.priority > subscriptions.get(i).subscriberMethod.priority) {
+                //按优先级加入
                 subscriptions.add(i, newSubscription);
                 break;
             }
@@ -179,6 +187,7 @@ public class EventBus {
 
         if (subscriberMethod.sticky) {
             if (eventInheritance) {
+                //是否设置了事件继承，默认是true
                 // Existing sticky events of all subclasses of eventType have to be considered.
                 // Note: Iterating over all events may be inefficient with lots of sticky events,
                 // thus data structure should be changed to allow a more efficient lookup
@@ -187,12 +196,15 @@ public class EventBus {
                 for (Map.Entry<Class<?>, Object> entry : entries) {
                     Class<?> candidateEventType = entry.getKey();
                     if (eventType.isAssignableFrom(candidateEventType)) {
+                        //事件class和事件对象相同，或是子类
                         Object stickyEvent = entry.getValue();
+                        //通过反射发送粘性事件
                         checkPostStickyEventToSubscription(newSubscription, stickyEvent);
                     }
                 }
             } else {
                 Object stickyEvent = stickyEvents.get(eventType);
+                //通过反射发送粘性事件
                 checkPostStickyEventToSubscription(newSubscription, stickyEvent);
             }
         }
@@ -239,6 +251,7 @@ public class EventBus {
 
     /** Unregisters the given subscriber from all event classes. */
     public synchronized void unregister(Object subscriber) {
+        //找到订阅者订阅的所有事件类型，也就是MainActivity中所有的Event
         List<Class<?>> subscribedTypes = typesBySubscriber.get(subscriber);
         if (subscribedTypes != null) {
             for (Class<?> eventType : subscribedTypes) {
@@ -254,6 +267,7 @@ public class EventBus {
     public void post(Object event) {
         PostingThreadState postingState = currentPostingThreadState.get();
         List<Object> eventQueue = postingState.eventQueue;
+        // 将事件添加进当前线程的事件队列
         eventQueue.add(event);
 
         if (!postingState.isPosting) {
@@ -264,6 +278,7 @@ public class EventBus {
             }
             try {
                 while (!eventQueue.isEmpty()) {
+                    //发送消息
                     postSingleEvent(eventQueue.remove(0), postingState);
                 }
             } finally {
@@ -379,6 +394,7 @@ public class EventBus {
         Class<?> eventClass = event.getClass();
         boolean subscriptionFound = false;
         if (eventInheritance) {
+            //找到类和它的父类
             List<Class<?>> eventTypes = lookupAllEventTypes(eventClass);
             int countTypes = eventTypes.size();
             for (int h = 0; h < countTypes; h++) {
@@ -386,6 +402,7 @@ public class EventBus {
                 subscriptionFound |= postSingleEventForEventType(event, postingState, clazz);
             }
         } else {
+            //直接发送当前类
             subscriptionFound = postSingleEventForEventType(event, postingState, eventClass);
         }
         if (!subscriptionFound) {
@@ -402,6 +419,7 @@ public class EventBus {
     private boolean postSingleEventForEventType(Object event, PostingThreadState postingState, Class<?> eventClass) {
         CopyOnWriteArrayList<Subscription> subscriptions;
         synchronized (this) {
+            //获得所有注册该事件的订阅者
             subscriptions = subscriptionsByEventType.get(eventClass);
         }
         if (subscriptions != null && !subscriptions.isEmpty()) {
@@ -410,6 +428,7 @@ public class EventBus {
                 postingState.subscription = subscription;
                 boolean aborted = false;
                 try {
+                    //反射发送事件
                     postToSubscription(subscription, event, postingState.isMainThread);
                     aborted = postingState.canceled;
                 } finally {
@@ -469,8 +488,11 @@ public class EventBus {
                 eventTypes = new ArrayList<>();
                 Class<?> clazz = eventClass;
                 while (clazz != null) {
+                    //加入当前类
                     eventTypes.add(clazz);
+                    //加入当前类的所有接口
                     addInterfaces(eventTypes, clazz.getInterfaces());
+                    //加入当前的父类
                     clazz = clazz.getSuperclass();
                 }
                 eventTypesCache.put(eventClass, eventTypes);
@@ -506,6 +528,7 @@ public class EventBus {
 
     void invokeSubscriber(Subscription subscription, Object event) {
         try {
+            //通过反射执行粘性事件
             subscription.subscriberMethod.method.invoke(subscription.subscriber, event);
         } catch (InvocationTargetException e) {
             handleSubscriberException(subscription, event, e.getCause());

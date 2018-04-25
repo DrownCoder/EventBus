@@ -44,6 +44,7 @@ public class SubscriberMethod {
             SubscriberMethod otherSubscriberMethod = (SubscriberMethod)other;
             otherSubscriberMethod.checkMethodString();
             // Don't use method.equals because of http://code.google.com/p/android/issues/detail?id=7811#c6
+            //MainActivity#onEventMain(AEvent
             return methodString.equals(otherSubscriberMethod.methodString);
         } else {
             return false;
