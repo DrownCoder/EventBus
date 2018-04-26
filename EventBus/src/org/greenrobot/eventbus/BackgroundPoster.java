@@ -38,8 +38,10 @@ final class BackgroundPoster implements Runnable, Poster {
         PendingPost pendingPost = PendingPost.obtainPendingPost(subscription, event);
         synchronized (this) {
             queue.enqueue(pendingPost);
+            //可以看到在线程池中是串行的，执行完一个，才会变为false
             if (!executorRunning) {
                 executorRunning = true;
+                //EventBus默认的线程池是newCachedThreadPool,无限大的可复用线程池
                 eventBus.getExecutorService().execute(this);
             }
         }
@@ -61,6 +63,7 @@ final class BackgroundPoster implements Runnable, Poster {
                             }
                         }
                     }
+                    //反射执行
                     eventBus.invokeSubscriber(pendingPost);
                 }
             } catch (InterruptedException e) {

@@ -78,7 +78,7 @@ public class EventBus {
 
     /** Convenience singleton for apps using a process-wide EventBus instance. */
     public static EventBus getDefault() {
-        //常规的双重锁单例模式
+        //常规的双重锁单例模式，特殊的是构造方法是共有的，也就是可以创建多个EventBus,互相不干扰
         EventBus instance = defaultInstance;
         if (instance == null) {
             synchronized (EventBus.class) {
@@ -142,6 +142,7 @@ public class EventBus {
     public void register(Object subscriber) {
         //获得订阅者对应的Class,MainActivity.class
         Class<?> subscriberClass = subscriber.getClass();
+        //找到所有的订阅的方法
         List<SubscriberMethod> subscriberMethods = subscriberMethodFinder.findSubscriberMethods(subscriberClass);
         synchronized (this) {
             for (SubscriberMethod subscriberMethod : subscriberMethods) {
@@ -239,6 +240,7 @@ public class EventBus {
             int size = subscriptions.size();
             for (int i = 0; i < size; i++) {
                 Subscription subscription = subscriptions.get(i);
+                //判断两个变量指向的是否是同一个内存地址
                 if (subscription.subscriber == subscriber) {
                     subscription.active = false;
                     subscriptions.remove(i);
@@ -255,6 +257,7 @@ public class EventBus {
         List<Class<?>> subscribedTypes = typesBySubscriber.get(subscriber);
         if (subscribedTypes != null) {
             for (Class<?> eventType : subscribedTypes) {
+                //到Event的map中删除MainActivity
                 unsubscribeByEventType(subscriber, eventType);
             }
             typesBySubscriber.remove(subscriber);
@@ -447,17 +450,20 @@ public class EventBus {
 
     private void postToSubscription(Subscription subscription, Object event, boolean isMainThread) {
         switch (subscription.subscriberMethod.threadMode) {
+            //默认类型
             case POSTING:
                 invokeSubscriber(subscription, event);
                 break;
             case MAIN:
                 if (isMainThread) {
+                    //如果当前就在UI线程，则直接反射执行
                     invokeSubscriber(subscription, event);
                 } else {
                     mainThreadPoster.enqueue(subscription, event);
                 }
                 break;
             case MAIN_ORDERED:
+                //不同于MAIN，直接通过Handler的队列执行，串行的
                 if (mainThreadPoster != null) {
                     mainThreadPoster.enqueue(subscription, event);
                 } else {
@@ -467,8 +473,10 @@ public class EventBus {
                 break;
             case BACKGROUND:
                 if (isMainThread) {
+                    //如果当前是UI线程，则异步
                     backgroundPoster.enqueue(subscription, event);
                 } else {
+                    //不是UI线程，则在该线程执行
                     invokeSubscriber(subscription, event);
                 }
                 break;
@@ -520,8 +528,10 @@ public class EventBus {
     void invokeSubscriber(PendingPost pendingPost) {
         Object event = pendingPost.event;
         Subscription subscription = pendingPost.subscription;
+        //回收
         PendingPost.releasePendingPost(pendingPost);
         if (subscription.active) {
+            //反射调用
             invokeSubscriber(subscription, event);
         }
     }

@@ -34,6 +34,7 @@ class AsyncPoster implements Runnable, Poster {
     public void enqueue(Subscription subscription, Object event) {
         PendingPost pendingPost = PendingPost.obtainPendingPost(subscription, event);
         queue.enqueue(pendingPost);
+        //和Background一样的是newCachedThreadPool，但是没有了串行的限制，是并行的，来一个new一个线程，无限制
         eventBus.getExecutorService().execute(this);
     }
 
@@ -43,6 +44,7 @@ class AsyncPoster implements Runnable, Poster {
         if(pendingPost == null) {
             throw new IllegalStateException("No pending post available");
         }
+        //反射执行
         eventBus.invokeSubscriber(pendingPost);
     }
 

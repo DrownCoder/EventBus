@@ -41,6 +41,7 @@ public interface MainThreadSupport {
 
         @Override
         public Poster createPoster(EventBus eventBus) {
+            //在主线程的Handler
             return new HandlerPoster(eventBus, looper, 10);
         }
     }

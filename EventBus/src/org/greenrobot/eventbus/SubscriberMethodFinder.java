@@ -245,15 +245,15 @@ class SubscriberMethodFinder {
                 return true;
             } else {
                 if (existing instanceof Method) {
-                    //存在多个方法都能接受Event,比如一个接受子类，一个接受父类，会返回True
+                    //存在多个方法都能接受Event,比如一个接受子类，一个接受父类，会返回True,
                     if (!checkAddWithMethodSignature((Method) existing, eventType)) {
                         // Paranoia check
                         throw new IllegalStateException();
                     }
-                    //所以也能接收
                     // Put any non-Method object to "consume" the existing Method
                     anyMethodByEventType.put(eventType, this);
                 }
+                //但当子类和父类相同的方法名和Event类型会返回true，所以也放到anyMethodByEventType,但是不能被接收
                 return checkAddWithMethodSignature(method, eventType);
             }
         }

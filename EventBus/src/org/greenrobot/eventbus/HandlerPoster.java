@@ -31,15 +31,19 @@ public class HandlerPoster extends Handler implements Poster {
         super(looper);
         this.eventBus = eventBus;
         this.maxMillisInsideHandleMessage = maxMillisInsideHandleMessage;
+        //用java实现的一个队列
         queue = new PendingPostQueue();
     }
 
     public void enqueue(Subscription subscription, Object event) {
+        //内部有一个ArrayList,没有就new
         PendingPost pendingPost = PendingPost.obtainPendingPost(subscription, event);
         synchronized (this) {
+            //入队
             queue.enqueue(pendingPost);
             if (!handlerActive) {
                 handlerActive = true;
+                //发送消息
                 if (!sendMessage(obtainMessage())) {
                     throw new EventBusException("Could not send handler message");
                 }
@@ -53,19 +57,24 @@ public class HandlerPoster extends Handler implements Poster {
         try {
             long started = SystemClock.uptimeMillis();
             while (true) {
+                //出队列
                 PendingPost pendingPost = queue.poll();
                 if (pendingPost == null) {
                     synchronized (this) {
                         // Check again, this time in synchronized
+                        //再获取一次
                         pendingPost = queue.poll();
+                        //仍然为null则return
                         if (pendingPost == null) {
                             handlerActive = false;
                             return;
                         }
                     }
                 }
+                //反射调用
                 eventBus.invokeSubscriber(pendingPost);
                 long timeInMethod = SystemClock.uptimeMillis() - started;
+                //如果超过maxMillisInsideHandleMessage还没执行完则重新调度
                 if (timeInMethod >= maxMillisInsideHandleMessage) {
                     if (!sendMessage(obtainMessage())) {
                         throw new EventBusException("Could not send handler message");
