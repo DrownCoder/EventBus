@@ -268,12 +268,13 @@ public class EventBus {
 
     /** Posts the given event to the event bus. */
     public void post(Object event) {
+        //ThreadLocal保存的，不同的线程互相不干扰
         PostingThreadState postingState = currentPostingThreadState.get();
         List<Object> eventQueue = postingState.eventQueue;
         // 将事件添加进当前线程的事件队列
         eventQueue.add(event);
 
-        if (!postingState.isPosting) {
+        if (!postingState.isPosting) {//如果当前线程正在发送
             postingState.isMainThread = isMainThread();
             postingState.isPosting = true;
             if (postingState.canceled) {
@@ -281,7 +282,7 @@ public class EventBus {
             }
             try {
                 while (!eventQueue.isEmpty()) {
-                    //发送消息
+                    //循环从队首取消息，发送消息
                     postSingleEvent(eventQueue.remove(0), postingState);
                 }
             } finally {

@@ -32,6 +32,7 @@ final class PendingPostQueue {
         } else {
             throw new IllegalStateException("Head present, but no tail");
         }
+        //释放锁
         notifyAll();
     }
 
@@ -48,6 +49,7 @@ final class PendingPostQueue {
 
     synchronized PendingPost poll(int maxMillisToWait) throws InterruptedException {
         if (head == null) {
+            //等待锁
             wait(maxMillisToWait);
         }
         return poll();

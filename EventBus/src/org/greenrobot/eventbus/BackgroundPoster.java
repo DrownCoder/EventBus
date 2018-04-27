@@ -56,6 +56,7 @@ final class BackgroundPoster implements Runnable, Poster {
                     if (pendingPost == null) {
                         synchronized (this) {
                             // Check again, this time in synchronized
+                            //消费者生产者模型
                             pendingPost = queue.poll();
                             if (pendingPost == null) {
                                 executorRunning = false;
