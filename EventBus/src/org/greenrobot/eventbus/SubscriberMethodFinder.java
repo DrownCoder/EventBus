@@ -270,10 +270,12 @@ class SubscriberMethodFinder {
             Class<?> methodClass = method.getDeclaringClass();
             Class<?> methodClassOld = subscriberClassByMethodKey.put(methodKey, methodClass);
             if (methodClassOld == null || methodClassOld.isAssignableFrom(methodClass)) {
+                //methodClassOld = null，说明时方法名不同的情况，直接返回true，会加入订阅。
                 //返回true
                 // Only add if not already found in a sub class
                 return true;
             } else {
+                //methodClass一定是methodClassOld的父类，因为是向上遍历的，所以父类的方法不会被加入订阅
                 // Revert the put, old class is further down the class hierarchy
                 subscriberClassByMethodKey.put(methodKey, methodClassOld);
                 return false;

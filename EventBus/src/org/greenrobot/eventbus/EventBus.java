@@ -155,6 +155,7 @@ public class EventBus {
     private void subscribe(Object subscriber, SubscriberMethod subscriberMethod) {
         Class<?> eventType = subscriberMethod.eventType;
         //new了一个Subscription对象
+        //每次都会new了一个Subscription对象，subsciber代表我们的订阅者MainActivity.class, subscriberMethod代表其中的一个订阅的方法。
         Subscription newSubscription = new Subscription(subscriber, subscriberMethod);
         //判断是否有以Event.class为key
         CopyOnWriteArrayList<Subscription> subscriptions = subscriptionsByEventType.get(eventType);
@@ -163,14 +164,15 @@ public class EventBus {
             subscriptions = new CopyOnWriteArrayList<>();
             subscriptionsByEventType.put(eventType, subscriptions);
         } else {
-            //注册过，就不要重复注册
+            //说明存在多个订阅者订阅该事件
             if (subscriptions.contains(newSubscription)) {
                 throw new EventBusException("Subscriber " + subscriber.getClass() + " already registered to event "
                         + eventType);
             }
         }
 
-        int size = subscriptions.size();
+        //如果长度不为0代表该事件有大于一个订阅者，或一个订阅中中有多个订阅方法订阅这个Event，相同参数名的方法
+       int size = subscriptions.size();
         for (int i = 0; i <= size; i++) {
             if (i == size || subscriberMethod.priority > subscriptions.get(i).subscriberMethod.priority) {
                 //按优先级加入
